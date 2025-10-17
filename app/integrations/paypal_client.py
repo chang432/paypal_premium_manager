@@ -85,7 +85,7 @@ class PayPalClient:
             raise
         data = resp.json()
 
-        # Normalize a list of {date, email, amount, direction}
+        # Normalize a list of {date, email, amount}
         items: List[Dict] = []
         txns = data.get("transaction_details", [])
         for t in txns:
@@ -96,13 +96,11 @@ class PayPalClient:
             amt = tx_info.get("transaction_amount") or {}
             if "value" in amt:
                 amount = f"{amt.get('value')} {amt.get('currency_code', '')}".strip()
-            direction = tx_info.get("debit_or_credit")  # 'C' (credit to you) or 'D' (debit from you)
             # Use transaction initiation/creation time
             date = tx_info.get("transaction_initiation_date") or tx_info.get("transaction_updated_date")
             items.append({
                 "date": date,
                 "email": payer_email,
                 "amount": amount,
-                "direction": direction,
             })
         return items

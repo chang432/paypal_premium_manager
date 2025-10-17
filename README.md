@@ -1,11 +1,11 @@
-# Ko-fi Premium Manager
+# PayPal Premium Manager
 
 A minimal FastAPI service that verifies whether a user email is a premium subscriber. It uses:
 - FastAPI for the API
 - Redis for hot cache
 - AWS DynamoDB for source of truth
 - docker-compose to run alongside Redis
-- Optional PayPal integration via REST API (OAuth token refresh and hourly transaction fetch)
+- Includes PayPal integration via REST API (OAuth token refresh and hourly transaction fetch)
 
 Intended to run on a Hetzner VPS. The API is meant for internal server-to-server calls (protectable by an internal API key).
 
@@ -37,10 +37,10 @@ Create it and optionally seed a user:
 
 ```bash
 # Using host Python and AWS profile
-AWS_PROFILE=default python3 scripts/create_table.py --table kofi_premium_users --region us-east-1 --seed-email you@example.com --seed-premium
+AWS_PROFILE=default python3 scripts/create_table.py --table paypal_premium_users --region us-east-1 --seed-email you@example.com --seed-premium
 
 # Or inside the container (profile and ~/.aws are mounted by compose):
-docker compose exec -e AWS_PROFILE=default api python scripts/create_table.py --table kofi_premium_users --region us-east-1 --seed-email you@example.com --seed-premium
+docker compose exec -e AWS_PROFILE=default api python scripts/create_table.py --table paypal_premium_users --region us-east-1 --seed-email you@example.com --seed-premium
 ```
 
 Minimal IAM policy for the app principal:
@@ -56,7 +56,7 @@ Minimal IAM policy for the app principal:
         "dynamodb:PutItem",
         "dynamodb:DescribeTable"
       ],
-      "Resource": "arn:aws:dynamodb:<region>:<account-id>:table/kofi_premium_users"
+  "Resource": "arn:aws:dynamodb:<region>:<account-id>:table/paypal_premium_users"
     }
   ]
 }
@@ -146,5 +146,5 @@ Optional hardening:
 ## Notes
 
 - Caching: Redis keys `premium:<email>` store `"1"`/`"0"` with TTL.
-- Consistency: Writes to DynamoDB will update cache on the next read; you can extend with webhook ingestion from Ko-fi to set `is_premium`.
+- Consistency: Writes to DynamoDB will update cache on the next read; you can extend with webhook ingestion from PayPal/webhooks to set `is_premium`.
 - Observability: Extend with logging and metrics; currently uses defaults.

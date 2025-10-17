@@ -15,7 +15,7 @@ def ensure_table(table_name: str, region: str):
         AttributeDefinitions=[{"AttributeName": "email", "AttributeType": "S"}],
         KeySchema=[{"AttributeName": "email", "KeyType": "HASH"}],
         BillingMode="PAY_PER_REQUEST",
-        Tags=[{"Key": "app", "Value": "kofi-premium-manager"}],
+        Tags=[{"Key": "app", "Value": "paypal-premium-manager"}],
     )
     waiter = dynamodb.get_waiter("table_exists")
     waiter.wait(TableName=table_name)
@@ -31,7 +31,7 @@ def seed_user(table_name: str, region: str, email: str, premium: bool):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--table", default="kofi_premium_users")
+    parser.add_argument("--table", default="paypal_premium_users")
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--seed-email", default=None)
     parser.add_argument("--seed-premium", action="store_true")

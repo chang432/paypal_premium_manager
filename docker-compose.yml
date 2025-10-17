@@ -2,8 +2,8 @@ version: "3.9"
 services:
   api:
     build: .
-    image: kofi-premium-manager:latest
-    container_name: kofi-premium-api
+    image: paypal-premium-manager:latest
+    container_name: paypal-premium-api
     restart: unless-stopped
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-prod}
@@ -12,7 +12,7 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - REDIS_TTL_SECONDS=${REDIS_TTL_SECONDS:-3600}
       - AWS_REGION=${AWS_REGION:-us-east-1}
-      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-kofi_premium_users}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-paypal_premium_users}
       # Use AWS shared config via profile inside the container
       - AWS_PROFILE=${AWS_PROFILE:-default}
       - AWS_SDK_LOAD_CONFIG=${AWS_SDK_LOAD_CONFIG:-1}
@@ -41,7 +41,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: kofi-premium-redis
+    container_name: paypal-premium-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
