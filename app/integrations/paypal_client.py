@@ -2,8 +2,7 @@ import base64
 import time
 from datetime import datetime, timedelta, timezone
 import os
-from typing import Dict, List, Optional
-from zoneinfo import ZoneInfo
+from typing import Dict, List, Optional, cast
 
 import requests
 
@@ -38,7 +37,8 @@ class PayPalClient:
             return self._access_token
 
         token_url = f"{self.base_url}/v1/oauth2/token"
-        auth = (self.client_id, self.client_secret)
+        # cast because we validate in __init__ they are present
+        auth = (cast(str, self.client_id), cast(str, self.client_secret))
         data = {"grant_type": "client_credentials"}
         resp = requests.post(token_url, data=data, auth=auth, timeout=20)
         resp.raise_for_status()
@@ -49,7 +49,7 @@ class PayPalClient:
         self._token_scopes = payload.get("scope")
         if self._debug:
             print("[PayPal] Issued token; scopes:", self._token_scopes, "expires_in:", expires_in)
-        return self._access_token
+        return cast(str, self._access_token)
 
     def search_transactions_last_hour(self) -> List[Dict]:
         now = datetime.now(timezone.utc)
@@ -57,11 +57,9 @@ class PayPalClient:
         return self.search_transactions(start_time, now)
 
     def search_transactions(self, start_time: datetime, end_time: datetime) -> List[Dict]:
-        # Use America/New_York timezone and output like 2014-07-12T00:00:00-0700 (offset without colon)
-        ny_tz = ZoneInfo("America/New_York")
-
+        # Use UTC timezone and output like 2014-07-12T00:00:00+0000 (offset without colon)
         def fmt(dt: datetime) -> str:
-            return dt.astimezone(ny_tz).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%S%z")
+            return dt.astimezone(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%S%z")
 
         token = self.get_access_token()
         headers = {"Authorization": f"Bearer {token}"}

@@ -24,8 +24,11 @@ def ensure_table(table_name: str, region: str):
 
 def seed_user(table_name: str, region: str, email: str, premium: bool):
     dynamodb = boto3.resource("dynamodb", region_name=region)
-    table = dynamodb.Table(table_name)
-    table.put_item(Item={"email": email.lower(), "is_premium": premium})
+    table = dynamodb.Table(table_name)  # type: ignore[attr-defined]
+    # Add UTC date timestamp in YYYY-MM-DD format
+    from datetime import datetime, timezone
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    table.put_item(Item={"email": email.lower(), "is_premium": premium, "timestamp": ts})
     print(f"Seeded {email} -> {premium}")
 
 
