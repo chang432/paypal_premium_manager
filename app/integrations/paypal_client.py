@@ -33,6 +33,8 @@ class PayPalClient:
 
     def get_access_token(self, force_refresh: bool = False) -> str:
         if not force_refresh and self._access_token and time.time() < self._token_expiry - 60:
+            if self._access_token is None:
+                raise RuntimeError("Access token is not available")
             return self._access_token
 
         token_url = f"{self.base_url}/v1/oauth2/token"
