@@ -6,3 +6,4 @@ boto3==1.35.36
 redis==5.0.8
 email-validator==2.2.0
 orjson==3.10.7
+requests==2.32.3

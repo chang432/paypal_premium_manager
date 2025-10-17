@@ -16,13 +16,28 @@ services:
       # Use AWS shared config via profile inside the container
       - AWS_PROFILE=${AWS_PROFILE:-default}
       - AWS_SDK_LOAD_CONFIG=${AWS_SDK_LOAD_CONFIG:-1}
+      # PayPal credentials
+      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
+      - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
+      - PAYPAL_BASE_URL=${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+      # Uvicorn / TLS
+      - UVICORN_HOST=0.0.0.0
+      - UVICORN_PORT_HTTP=8080
+      - UVICORN_PORT_HTTPS=8443
+      - UVICORN_WORKERS=${UVICORN_WORKERS:-2}
+      - ENABLE_TLS=${ENABLE_TLS}
+      - SSL_CERTFILE=${SSL_CERTFILE:-/certs/cert.pem}
+      - SSL_KEYFILE=${SSL_KEYFILE:-/certs/key.pem}
     ports:
-      - "8080:8080"
+      - "8080:8080"   # HTTP
+      - "8443:8443"   # HTTPS (optional)
     depends_on:
       - redis
     volumes:
       # Mount host AWS config/credentials for the appuser
       - ${HOME}/.aws:/home/appuser/.aws:ro
+      # Mount TLS certs dir (expects cert.pem and key.pem or adjust paths)
+      - ./certs:/certs:ro
 
   redis:
     image: redis:7-alpine
