@@ -36,6 +36,8 @@ services:
     volumes:
       # Mount host AWS config/credentials for the appuser
       - ${HOME}/.aws:/home/appuser/.aws:ro
+      # Also mount for root so ad-hoc exec as root can use the same profile
+      - ${HOME}/.aws:/root/.aws:ro
       # Mount TLS certs dir (expects cert.pem and key.pem or adjust paths)
       - ./certs:/certs:ro
 
