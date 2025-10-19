@@ -47,6 +47,16 @@ class DynamoRepository:
             }
         )
 
+    def _update_timestamp_sync(self, email: str, timestamp: str) -> None:
+        # Conditionally update timestamp only if the item exists
+        self._table.update_item(
+            Key={"email": email.lower()},
+            UpdateExpression="SET #ts = :ts",
+            ExpressionAttributeNames={"#ts": "timestamp"},
+            ExpressionAttributeValues={":ts": timestamp},
+            ConditionExpression="attribute_exists(email)",
+        )
+
     # --- async API ---
     async def is_premium(self, email: str) -> bool:
         return await asyncio.to_thread(self._get_item_sync, email)
@@ -59,6 +69,9 @@ class DynamoRepository:
 
     async def put_user_with_timestamp(self, email: str, is_premium: bool, timestamp: str) -> None:
         await asyncio.to_thread(self._put_item_with_timestamp_sync, email, is_premium, timestamp)
+
+    async def update_timestamp(self, email: str, timestamp: str) -> None:
+        await asyncio.to_thread(self._update_timestamp_sync, email, timestamp)
 
 
 def ensure_table_exists(table_name: str, region: str) -> None:

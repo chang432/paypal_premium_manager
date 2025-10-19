@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import EmailStr
 from app.models.schemas import PremiumCheckRequest, PremiumCheckResponse
 from app.db.redis_cache import RedisCache
@@ -60,3 +60,46 @@ async def premium_check_get(email: EmailStr):
         pass
 
     return PremiumCheckResponse(email=email, premium=premium, source="db")
+
+
+@router.post("/webhooks/paypal")
+async def paypal_webhook(request: Request):
+    # For now, just print out request details and return ok
+    try:
+        raw = await request.body()
+    except Exception:
+        raw = b""
+
+    headers = dict(request.headers)
+    interesting_keys = [
+        "paypal-transmission-id",
+        "paypal-transmission-time",
+        "paypal-transmission-sig",
+        "paypal-cert-url",
+        "paypal-auth-algo",
+        "content-type",
+        "user-agent",
+    ]
+    interesting = {k: headers.get(k) for k in interesting_keys if k in headers}
+
+    body_text = raw.decode("utf-8", errors="replace")
+    if len(body_text) > 4000:
+        body_preview = body_text[:4000] + "…"
+    else:
+        body_preview = body_text
+
+    print("[PayPal Webhook] method=", request.method, "url=", str(request.url))
+    print("[PayPal Webhook] headers=", interesting)
+
+    # Try to detect event_type from JSON for convenience
+    event_type = None
+    try:
+        import json
+        payload = json.loads(body_text) if body_text else {}
+        event_type = payload.get("event_type")
+    except Exception:
+        payload = {}
+    print("[PayPal Webhook] event_type=", event_type)
+    print("[PayPal Webhook] body=", body_preview)
+
+    return {"status": "ok"}
