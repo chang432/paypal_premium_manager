@@ -59,3 +59,38 @@ class DynamoRepository:
 
     async def put_user_with_timestamp(self, email: str, is_premium: bool, timestamp: str) -> None:
         await asyncio.to_thread(self._put_item_with_timestamp_sync, email, is_premium, timestamp)
+
+
+def ensure_table_exists(table_name: str, region: str) -> None:
+    """Ensure the DynamoDB table exists; create it if missing.
+
+    Idempotent: If the table already exists, returns immediately.
+    Blocks until the table is ACTIVE when creating.
+    """
+    client = boto3.client("dynamodb", region_name=region)
+    try:
+        resp = client.describe_table(TableName=table_name)
+        status = resp.get("Table", {}).get("TableStatus")
+        if status != "ACTIVE":
+            waiter = client.get_waiter("table_exists")
+            waiter.wait(TableName=table_name)
+        return
+    except client.exceptions.ResourceNotFoundException:
+        # Not found -> try to create
+        pass
+
+    try:
+        # Create table with partition key 'email' (S) and on-demand billing
+        client.create_table(
+            TableName=table_name,
+            AttributeDefinitions=[{"AttributeName": "email", "AttributeType": "S"}],
+            KeySchema=[{"AttributeName": "email", "KeyType": "HASH"}],
+            BillingMode="PAY_PER_REQUEST",
+            Tags=[{"Key": "app", "Value": "paypal-premium-manager"}],
+        )
+    except client.exceptions.ResourceInUseException:
+        # Another worker/process already initiated creation; just wait
+        pass
+
+    waiter = client.get_waiter("table_exists")
+    waiter.wait(TableName=table_name)
