@@ -12,10 +12,11 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - REDIS_TTL_SECONDS=${REDIS_TTL_SECONDS:-3600}
       - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
       - DYNAMODB_TABLE=${DYNAMODB_TABLE:-paypal_premium_users}
-      # Use AWS shared config via profile inside the container
-      - AWS_PROFILE=${AWS_PROFILE:-default}
-      - AWS_SDK_LOAD_CONFIG=${AWS_SDK_LOAD_CONFIG:-1}
+      # Only env-based credentials are used; profiles are disabled
       # PayPal credentials
       - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
       - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
@@ -34,10 +35,6 @@ services:
     depends_on:
       - redis
     volumes:
-      # Mount host AWS config/credentials for the appuser
-      - ${HOME}/.aws:/home/appuser/.aws:ro
-      # Also mount for root so ad-hoc exec as root can use the same profile
-      - ${HOME}/.aws:/root/.aws:ro
       # Mount TLS certs dir (expects cert.pem and key.pem or adjust paths)
       - ./certs:/certs:ro
 

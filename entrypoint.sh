@@ -16,7 +16,7 @@ exec_uvicorn() {
   if [ "$(id -u)" = "0" ]; then
     # shellcheck disable=SC2016
     CMD_STR="uvicorn app.main:app $*"
-    exec su -s /bin/sh -c "$CMD_STR" appuser
+    exec su -m -s /bin/sh -c "$CMD_STR" appuser
   else
     exec uvicorn app.main:app "$@"
   fi
