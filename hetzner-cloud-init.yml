@@ -1,0 +1,26 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+runcmd:
+  # install required packages
+  - apt install -y docker.io
+  - apt install -y docker-compose
+  - apt install -y unzip
+  - apt install -y python3.12-venv
+
+  - echo "[CUSTOM] Pulling down aws cli"
+  - curl -o "awscliv2.zip" "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+  - unzip awscliv2.zip
+  - ./aws/install
+  - rm -rf awscliv2.zip
+  - rm -rf aws
+
+  - echo "[CHECKPOINT]"
+  - cd /opt
+  - git clone https://github.com/chang432/paypal_premium_manager.git
+  - cd paypal_premium_manager
+  - python3 -m venv venv
+  - venv/bin/pip install -r requirements.txt
+
+  - reboot

@@ -29,6 +29,16 @@ else
   exit 1
 fi
 
+# Resolve env file path; allow SRC_ENV_PATH override
+ENV_FILE_PATH="${SRC_ENV_PATH:-.env}"
+if [[ ! -f "$ENV_FILE_PATH" ]]; then
+  # If override provided but file missing, warn and fallback
+  if [[ -n "${SRC_ENV_PATH:-}" ]]; then
+    echo "WARN: SRC_ENV_PATH set to '$SRC_ENV_PATH' but file not found. Falling back to .env" >&2
+  fi
+  ENV_FILE_PATH=".env"
+fi
+
 show_help() {
   sed -n '2,20p' "$0"
 }
@@ -56,26 +66,26 @@ fi
 
 if [[ $DO_DOWN -eq 1 ]]; then
   echo "> Stopping and removing containers..."
-  "${DCMD[@]}" down
+  "${DCMD[@]}" --env-file "$ENV_FILE_PATH" down
   exit 0
 fi
 
 if [[ $FORCE_REBUILD -eq 1 ]]; then
   echo "> Forcing image rebuild..."
-  "${DCMD[@]}" build --no-cache
+  "${DCMD[@]}" --env-file "$ENV_FILE_PATH" build --no-cache
 fi
 
 if [[ $BUILD -eq 1 && $FORCE_REBUILD -eq 0 ]]; then
   echo "> Building images (if needed)..."
-  "${DCMD[@]}" build
+  "${DCMD[@]}" --env-file "$ENV_FILE_PATH" build
 fi
 
 echo "> Starting services..."
-"${DCMD[@]}" up -d
+"${DCMD[@]}" --env-file "$ENV_FILE_PATH" up -d
 
 if [[ $TAIL_LOGS -eq 1 ]]; then
   echo "> Tailing logs. Press Ctrl+C to exit."
-  "${DCMD[@]}" logs -f
+  "${DCMD[@]}" --env-file "$ENV_FILE_PATH" logs -f
 else
   echo "> Done. Services should be running. Use 'docker compose ps' to verify."
 fi

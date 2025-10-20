@@ -1,10 +1,16 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Allow overriding .env path via SRC_ENV_PATH (useful for differing host paths)
+    model_config = SettingsConfigDict(
+        env_file=os.getenv("SRC_ENV_PATH", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "paypal-premium-manager"
     environment: str = Field(default="dev", validation_alias="ENVIRONMENT")
