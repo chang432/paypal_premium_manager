@@ -88,8 +88,8 @@ async def paypal_webhook(request: Request):
     else:
         body_preview = body_text
 
-    print("[PayPal Webhook] method=", request.method, "url=", str(request.url))
-    print("[PayPal Webhook] headers=", interesting)
+    # print("[PayPal Webhook] method=", request.method, "url=", str(request.url))
+    # print("[PayPal Webhook] headers=", interesting)
 
     # Try to detect event_type from JSON for convenience
     event_type = None
@@ -100,6 +100,47 @@ async def paypal_webhook(request: Request):
     except Exception:
         payload = {}
     print("[PayPal Webhook] event_type=", event_type)
-    print("[PayPal Webhook] body=", body_preview)
+
+    # Extract and print order_id if present: resource.supplementary_data.related_ids.order_id
+    try:
+        order_id = (
+            payload.get("resource", {})
+                   .get("supplementary_data", {})
+                   .get("related_ids", {})
+                   .get("order_id")
+            if isinstance(payload, dict) else None
+        )
+        if isinstance(order_id, str) and order_id:
+            print("[PayPal Webhook] order_id=", order_id)
+    except Exception:
+        pass
+
+    # Extract and print UTC month/day/year from resource.create_time if present
+    try:
+        from datetime import datetime, timezone
+        r_create = (
+            payload.get("resource", {}).get("create_time")
+            if isinstance(payload, dict) else None
+        )
+        if isinstance(r_create, str) and r_create:
+            dt = None
+            try:
+                # canonical Zulu format
+                dt = datetime.strptime(r_create, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            except Exception:
+                try:
+                    # fallback: ISO8601 with offset
+                    dt = datetime.fromisoformat(r_create.replace("Z", "+00:00")).astimezone(timezone.utc)
+                except Exception:
+                    dt = None
+            if dt is not None:
+                print(
+                    "[PayPal Webhook] resource.create_time UTC:",
+                    {"month": dt.month, "day": dt.day, "year": dt.year},
+                )
+    except Exception:
+        # keep webhook resilient; avoid failing logging
+        pass
+    # print("[PayPal Webhook] body=", body_preview)
 
     return {"status": "ok"}
