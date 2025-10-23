@@ -19,30 +19,32 @@ class DynamoRepository:
 
     # --- sync implementations (run in thread) ---
     def _get_item_sync(self, email: str) -> bool:
+        """Return True if an item exists for the email; presence implies premium.
+        """
         resp = self._table.get_item(Key={"email": email.lower()})
-        return "Item" in resp and bool(resp["Item"].get("is_premium", False))
+        return "Item" in resp
 
     def _exists_sync(self, email: str) -> bool:
         resp = self._table.get_item(Key={"email": email.lower()})
         return "Item" in resp
 
     def _put_item_sync(self, email: str, is_premium: bool) -> None:
-        # Store current UTC date in YYYY-MM-DD format
+        """Insert/overwrite an item for the email with current UTC date timestamp.
+        """
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         self._table.put_item(
             Item={
                 "email": email.lower(),
-                "is_premium": bool(is_premium),
                 "timestamp": ts,
             }
         )
 
     def _put_item_with_timestamp_sync(self, email: str, is_premium: bool, timestamp: str) -> None:
-        # Assume timestamp is already a UTC date string YYYY-MM-DD
+        """Insert/overwrite an item using the provided UTC date string timestamp.
+        """
         self._table.put_item(
             Item={
                 "email": email.lower(),
-                "is_premium": bool(is_premium),
                 "timestamp": timestamp,
             }
         )

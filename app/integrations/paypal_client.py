@@ -104,3 +104,66 @@ class PayPalClient:
                 "amount": amount,
             })
         return items
+
+    def get_payer_email_by_order_id(self, order_id: str) -> Optional[str]:
+        """Return the payer email for a given PayPal order_id using Checkout Orders API.
+
+        Docs: GET /v2/checkout/orders/{id}
+        Typical shape: { "payer": { "email_address": "..." }, ... }
+        Returns None if not found or on 404.
+        """
+        if not order_id:
+            return None
+        token = self.get_access_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"{self.base_url}/v2/checkout/orders/{order_id}"
+        if self._debug:
+            print("[PayPal] GET", url)
+        resp = requests.get(url, headers=headers, timeout=20)
+        if resp.status_code == 404:
+            return None
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError:
+            if self._debug:
+                try:
+                    print("[PayPal] order lookup failed:", resp.status_code, resp.json())
+                except Exception:
+                    print("[PayPal] order lookup failed:", resp.status_code, resp.text)
+            raise
+        data = resp.json()
+        email: Optional[str] = None
+        try:
+            payer = data.get("payer", {}) if isinstance(data, dict) else {}
+            email = payer.get("email_address")
+        except Exception:
+            email = None
+        return email
+
+    def print_capture_by_id(self, capture_id: str) -> None:
+        """Fetch a payment capture by id and print the JSON result.
+
+        Docs: GET /v2/payments/captures/{capture_id}
+        """
+        if not capture_id:
+            print("[PayPal] capture_id is empty")
+            return
+        token = self.get_access_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"{self.base_url}/v2/payments/captures/{capture_id}"
+        print(url)
+        resp = requests.get(url, headers=headers, timeout=20)
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError:
+            try:
+                print("[PayPal] capture lookup failed:", resp.status_code, resp.json())
+            except Exception:
+                print("[PayPal] capture lookup failed:", resp.status_code, resp.text)
+            raise
+        try:
+            data = resp.json()
+        except Exception:
+            print("[PayPal] Non-JSON capture response:", resp.text)
+            return
+        print("[PayPal] capture:", data)

@@ -4,6 +4,7 @@ from app.models.schemas import PremiumCheckRequest, PremiumCheckResponse
 from app.db.redis_cache import RedisCache
 from app.db.dynamodb import DynamoRepository
 from app.core.config import settings
+from app.integrations.paypal_client import PayPalClient
 
 router = APIRouter()
 
@@ -64,7 +65,7 @@ async def premium_check_get(email: EmailStr):
 
 @router.post("/webhooks/paypal")
 async def paypal_webhook(request: Request):
-    # For now, just print out request details and return ok
+    # Parse webhook, resolve payer email via order_id, and upsert into DynamoDB
     try:
         raw = await request.body()
     except Exception:
@@ -91,7 +92,7 @@ async def paypal_webhook(request: Request):
     # print("[PayPal Webhook] method=", request.method, "url=", str(request.url))
     # print("[PayPal Webhook] headers=", interesting)
 
-    # Try to detect event_type from JSON for convenience
+    # Try to detect event_type and parse JSON payload
     event_type = None
     try:
         import json
@@ -101,7 +102,8 @@ async def paypal_webhook(request: Request):
         payload = {}
     print("[PayPal Webhook] event_type=", event_type)
 
-    # Extract and print order_id if present: resource.supplementary_data.related_ids.order_id
+    # Extract order_id if present: resource.supplementary_data.related_ids.order_id
+    order_id = None
     try:
         order_id = (
             payload.get("resource", {})
@@ -113,11 +115,12 @@ async def paypal_webhook(request: Request):
         if isinstance(order_id, str) and order_id:
             print("[PayPal Webhook] order_id=", order_id)
     except Exception:
-        pass
+        order_id = None
 
-    # Extract and print UTC month/day/year from resource.create_time if present
+    # Derive UTC date string YYYY-MM-DD from resource.create_time (fallback: today's UTC date)
+    from datetime import datetime, timezone
+    date_str = None
     try:
-        from datetime import datetime, timezone
         r_create = (
             payload.get("resource", {}).get("create_time")
             if isinstance(payload, dict) else None
@@ -125,7 +128,7 @@ async def paypal_webhook(request: Request):
         if isinstance(r_create, str) and r_create:
             dt = None
             try:
-                # canonical Zulu format
+                # canonical Z format
                 dt = datetime.strptime(r_create, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
             except Exception:
                 try:
@@ -134,13 +137,47 @@ async def paypal_webhook(request: Request):
                 except Exception:
                     dt = None
             if dt is not None:
-                print(
-                    "[PayPal Webhook] resource.create_time UTC:",
-                    {"month": dt.month, "day": dt.day, "year": dt.year},
-                )
+                date_str = dt.strftime("%Y-%m-%d")
     except Exception:
-        # keep webhook resilient; avoid failing logging
-        pass
-    # print("[PayPal Webhook] body=", body_preview)
+        date_str = None
+    if not date_str:
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    return {"status": "ok"}
+    # Resolve payer email: prefer order lookup; fallback to webhook payload
+    email = None
+    try:
+        if isinstance(order_id, str) and order_id:
+            client = PayPalClient()
+            email = client.get_payer_email_by_order_id(order_id)
+    except Exception:
+        email = None
+    if not email:
+        try:
+            email = (
+                payload.get("resource", {})
+                       .get("payer", {})
+                       .get("email_address")
+                if isinstance(payload, dict) else None
+            )
+        except Exception:
+            email = None
+
+    if not email or not isinstance(email, str):
+        print("[PayPal Webhook] No payer email found; skipping DB upsert")
+        return {"status": "ok", "skipped": True}
+
+    # Upsert into DynamoDB with timestamp
+    repo = DynamoRepository()
+    try:
+        if await repo.exists(email):
+            await repo.update_timestamp(email, date_str)
+            action = "updated"
+        else:
+            await repo.put_user_with_timestamp(email, True, date_str)
+            action = "created"
+    except Exception as e:
+        # Avoid failing the webhook; log and return ok
+        print("[PayPal Webhook] DynamoDB upsert failed:", repr(e))
+        return {"status": "ok", "error": "dynamodb"}
+
+    return {"status": "ok", "email": email, "date": date_str, "action": action}
