@@ -100,7 +100,7 @@ docker compose exec api python /app/scripts/paypal_fetch_hourly_transactions.py
 ```
 
 ```bash
-curl -s -X POST http://localhost:8080/v1/premium/check \
+curl -s -X POST http://localhost/v1/premium/check \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com"}' | jq
 ```
@@ -114,28 +114,22 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8080
 ```
 
-## HTTPS/TLS with Uvicorn directly
+## Reverse proxy with Nginx
 
-This stack can terminate TLS inside the API container if you prefer not to use a reverse proxy.
+The compose stack includes an `nginx` service that fronts the FastAPI app (Uvicorn) and exposes port 80 on the host.
 
-- Place your certificate and key files at `./certs/cert.pem` and `./certs/key.pem` (or override with `SSL_CERTFILE` and `SSL_KEYFILE`).
-- Set `ENABLE_TLS=1` in `.env`.
-- Compose exposes both `8080` (HTTP) and `8443` (HTTPS). If `ENABLE_TLS=1` and certs exist, HTTPS will be served on 8443.
+- Public entrypoint: `http://localhost` (port 80)
+- Nginx proxies requests to the `api` container on port 8080.
+- To enable HTTPS termination at Nginx, mount certs to `./certs` and update `nginx/default.conf` (see commented server block) and map `443:443` in `docker-compose.yml`.
 
-Example curl:
-
-```bash
-curl -k https://localhost:8443/v1/health
-```
-
-Note: Using a reverse proxy (Caddy/Traefik/Nginx) or cloud LB is still recommended for automatic cert management and additional protections.
+TLS terminates at Nginx; the API container serves HTTP internally only.
 
 ## Deployment (Hetzner VPS)
 
 1. Install Docker and docker-compose plugin on the VPS.
 2. Copy the repo to the VPS and set environment variables (or `.env` file). Do not commit secrets.
 3. Run `docker compose up -d --build`.
-4. If exposing directly, set up TLS as above and open only port 8443; otherwise place behind a reverse proxy and close direct access.
+4. Expose Nginx on port 80 (HTTP) or configure TLS at Nginx and expose 443. Do not expose the API container directly.
 
 Note: Ensure your VPS user has `~/.aws/{config,credentials}` populated for the profile you set in `.env` (e.g., `AWS_PROFILE=prod`). The compose file mounts this directory into the container at `/home/appuser/.aws` in read-only mode.
 

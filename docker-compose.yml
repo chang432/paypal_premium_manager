@@ -21,22 +21,27 @@ services:
       - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
       - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
       - PAYPAL_BASE_URL=${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
-      # Uvicorn / TLS
+      # Uvicorn
       - UVICORN_HOST=0.0.0.0
       - UVICORN_PORT_HTTP=8080
-      - UVICORN_PORT_HTTPS=8443
       - UVICORN_WORKERS=${UVICORN_WORKERS:-2}
-      - ENABLE_TLS=${ENABLE_TLS}
-      - SSL_CERTFILE=${SSL_CERTFILE:-/certs/cert.pem}
-      - SSL_KEYFILE=${SSL_KEYFILE:-/certs/key.pem}
-    ports:
-      - "8080:8080"   # HTTP
-      - "8443:8443"   # HTTPS (optional)
+    # No direct host port exposure; traffic goes through nginx
     depends_on:
       - redis
+    volumes: []
+
+  nginx:
+    image: nginx:alpine
+    container_name: paypal-premium-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      # - "443:443"  # uncomment if enabling HTTPS in nginx config
     volumes:
-      # Mount TLS certs dir (expects cert.pem and key.pem or adjust paths)
-      - ./certs:/certs:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # - ./certs:/etc/nginx/certs:ro  # mount when enabling HTTPS
 
   redis:
     image: redis:7-alpine

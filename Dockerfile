@@ -20,7 +20,7 @@ COPY entrypoint.sh /app/entrypoint.sh
 COPY scripts /app/scripts
 RUN chmod +x /app/scripts/*.py || true
 
-EXPOSE 8080 8443
+EXPOSE 8080
 
 # Non-root user
 RUN useradd -ms /bin/bash appuser && \
