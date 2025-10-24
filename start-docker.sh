@@ -59,11 +59,6 @@ for arg in "$@"; do
   esac
 done
 
-# Helpful hints
-if [[ ! -f .env && -f .env.example ]]; then
-  echo "NOTE: No .env found. You can copy .env.example to .env and adjust settings (AWS_PROFILE, etc.)." >&2
-fi
-
 if [[ $DO_DOWN -eq 1 ]]; then
   echo "> Stopping and removing containers..."
   "${DCMD[@]}" --env-file "$ENV_FILE_PATH" down
