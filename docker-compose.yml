@@ -38,10 +38,10 @@ services:
       - api
     ports:
       - "80:80"
-      # - "443:443"  # uncomment if enabling HTTPS in nginx config
+      - "443:443"  # uncomment if enabling HTTPS in nginx config
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      # - ./certs:/etc/nginx/certs:ro  # mount when enabling HTTPS
+      - ./certs:/etc/nginx/certs:ro  # mount when enabling HTTPS
 
   redis:
     image: redis:7-alpine

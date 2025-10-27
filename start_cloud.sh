@@ -8,6 +8,7 @@
 
 FLOATING_IP="5.161.30.12"
 PARTITION_NAMES="HC_Volume_103799742" 
+S3_BUCKET_NAME="paypal-premium-manager"
 
 export PARTITION_PATH=""
 
@@ -47,7 +48,12 @@ fi
 if [[ -d "$PARTITION_PATH" && $(docker ps -q | wc -l) == 0 ]] && ip addr show dev eth0 | grep -q "$FLOATING_IP"; then
     echo "External volume detected, floating ip added, and containers are not running yet, starting up now!"
     
-    # cp -r "${PARTITION_PATH}/letsencrypt" /opt/docker/letsencrypt
+    # Configure SSL certs from S3
+    source "${PARTITION_PATH}/.env"
+    aws s3 cp "s3://${S3_BUCKET_NAME}/letsencrypt" "/opt/letsencrypt" --recursive
+
+    cp /opt/letsencrypt/live/paypal-premium-manager.com/fullchain.pem /opt/paypal_premium_manager/certs/fullchain.pem
+    cp /opt/letsencrypt/live/paypal-premium-manager.com/privkey.pem /opt/paypal_premium_manager/certs/privkey.pem
 
     cd /opt/paypal_premium_manager
     
