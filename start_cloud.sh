@@ -52,6 +52,7 @@ if [[ -d "$PARTITION_PATH" && $(docker ps -q | wc -l) == 0 ]] && ip addr show de
     source "${PARTITION_PATH}/.env"
     aws s3 cp "s3://${S3_BUCKET_NAME}/letsencrypt" "/opt/letsencrypt" --recursive
 
+    mkdir -p /opt/paypal_premium_manager/certs
     cp /opt/letsencrypt/live/paypal-premium-manager.com/fullchain.pem /opt/paypal_premium_manager/certs/fullchain.pem
     cp /opt/letsencrypt/live/paypal-premium-manager.com/privkey.pem /opt/paypal_premium_manager/certs/privkey.pem
 
