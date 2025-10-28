@@ -3,12 +3,12 @@ set -euo pipefail
 
 # Start docker compose at the repository root.
 # Usage:
-#   ./start-docker.sh             # build and start
-#   ./start-docker.sh --no-build  # start without building
-#   ./start-docker.sh --logs      # tail logs after starting
-#   ./start-docker.sh --down      # stop and remove containers
-#   ./start-docker.sh --rebuild   # force rebuild
-#   ./start-docker.sh --help      # show help
+#   ./start_docker.sh [env-file]           # build and start with given env file (or .env by default)
+#   ./start_docker.sh [env-file] --logs    # tail logs after starting
+#   ./start_docker.sh [env-file] --down    # stop and remove containers
+#   ./start_docker.sh [env-file] --rebuild # force rebuild
+#   ./start_docker.sh [env-file] --no-build# start without building
+#   ./start_docker.sh --help               # show help
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -29,19 +29,45 @@ else
   exit 1
 fi
 
-# Resolve env file path; allow SRC_ENV_PATH override
-ENV_FILE_PATH="${SRC_ENV_PATH:-.env}"
-if [[ ! -f "$ENV_FILE_PATH" ]]; then
-  # If override provided but file missing, warn and fallback
-  if [[ -n "${SRC_ENV_PATH:-}" ]]; then
-    echo "WARN: SRC_ENV_PATH set to '$SRC_ENV_PATH' but file not found. Falling back to .env" >&2
+show_help() {
+  sed -n '2,12p' "$0"
+}
+
+# Determine env file path from first arg if it looks like a file, else from SRC_ENV_PATH or default .env
+ENV_FILE_PATH=""
+if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+  CANDIDATE="$1"
+  shift
+  if [[ -f "$CANDIDATE" ]]; then
+    ENV_FILE_PATH="$CANDIDATE"
+  else
+    echo "ERROR: Env file not found at: $CANDIDATE" >&2
+    exit 1
   fi
-  ENV_FILE_PATH=".env"
 fi
 
-show_help() {
-  sed -n '2,20p' "$0"
-}
+if [[ -z "$ENV_FILE_PATH" ]]; then
+  ENV_FILE_PATH="${SRC_ENV_PATH:-.env}"
+  if [[ ! -f "$ENV_FILE_PATH" ]]; then
+    if [[ -n "${SRC_ENV_PATH:-}" ]]; then
+      echo "WARN: SRC_ENV_PATH set to '$SRC_ENV_PATH' but file not found. Falling back to .env" >&2
+    fi
+    ENV_FILE_PATH=".env"
+  fi
+fi
+
+# Export env vars from the env file for this shell and children (compose uses --env-file as well)
+if [[ -f "$ENV_FILE_PATH" ]]; then
+  echo "> Sourcing env file: $ENV_FILE_PATH"
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE_PATH"
+  set +a
+else
+  echo "WARN: Env file '$ENV_FILE_PATH' not found; continuing without sourcing." >&2
+fi
+
+export SRC_ENV_PATH="$ENV_FILE_PATH"
 
 BUILD=1
 TAIL_LOGS=0
